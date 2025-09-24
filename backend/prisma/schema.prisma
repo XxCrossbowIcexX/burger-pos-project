@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum RolUsuario {
+  administrador
+  mostrador
+  cocina
+  cliente
+}
+
+enum EstadoVenta {
+  pendiente
+  completada
+  cancelada
+}
+
+enum TipoIngrediente {
+  pan
+  carne
+  queso
+  vegetal
+  salsa
+  otro
+}
+
+enum EstadoCaja {
+  abierta
+  cerrada
+}
+
+enum MetodoPago {
+  efectivo
+  transferencia
+}
+
+// ─────────────────────────────────────────────
+// Modelos
+// ─────────────────────────────────────────────
+
+model Usuario {
+  id            String     @id @default(uuid())
+  nombreUsuario String     @unique @map("nombre_usuario")
+  contraseña   String
+  rol           RolUsuario @default(cliente)
+  createdAt     DateTime   @default(now()) @map("creado_en")
+  updatedAt     DateTime   @updatedAt @map("actualizado_en")
+  activo        Boolean    @default(true)
+
+  ventas Venta[]
+  Caja   Caja[]
+
+  @@map("usuarios")
+}
+
+model Caja {
+  id                  String     @id @default(uuid())
+  usuarioId           String     @map("usuario_id")
+  montoInicial        Decimal    @map("monto_inicial")
+  montoFinal          Decimal?   @map("monto_final")
+  ventasEfectivo      Decimal    @default(0) @map("ventas_efectivo")
+  ventasTransferencia Decimal    @default(0) @map("ventas_transferencia")
+  totalVentas         Decimal    @default(0) @map("total_ventas")
+  diferencia          Decimal?
+  estado              EstadoCaja @default(abierta)
+  fechaApertura       DateTime   @default(now()) @map("fecha_apertura")
+  fechaCierre         DateTime?  @map("fecha_cierre")
+  activo              Boolean    @default(true)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  ventas  Venta[]
+
+  @@map("cajas")
+}
+
+model Categoria {
+  id                  String   @id @default(uuid())
+  nombre              String   @unique
+  permiteIngredientes Boolean  @default(true) @map("permite_ingredientes")
+  permiteModificar    Boolean  @default(true) @map("permite_modificar")
+  icono               String?
+  createdAt           DateTime @default(now()) @map("creado_en")
+  updatedAt           DateTime @updatedAt @map("actualizado_en")
+  activo              Boolean  @default(true)
+
+  productos Producto[]
+
+  @@map("categorias")
+}
+
+model Ingrediente {
+  id            String          @id @default(uuid())
+  nombre        String
+  tipo          TipoIngrediente
+  estaqueable   Boolean         @default(false)
+  puedeSerExtra Boolean         @default(false) @map("puede_ser_extra")
+  precioExtra   Decimal?        @default(0) @map("precio_extra")
+  descripcion   String?
+  createdAt     DateTime        @default(now()) @map("creado_en")
+  updatedAt     DateTime        @updatedAt @map("actualizado_en")
+  activo        Boolean         @default(true)
+
+  productos ProductoIngrediente[]
+
+  @@map("ingredientes")
+}
+
+model Producto {
+  id                 String   @id @default(uuid())
+  codigo             String   @default("")
+  nombre             String
+  categoriaId        String
+  precioBase         Decimal  @map("precio_base")
+  descripcion        String?
+  permiteExtras      Boolean  @default(true)
+  permiteExclusiones Boolean  @default(true)
+  createdAt          DateTime @default(now()) @map("creado_en")
+  updatedAt          DateTime @updatedAt @map("actualizado_en")
+  activo             Boolean  @default(true)
+
+  categoria    Categoria             @relation(fields: [categoriaId], references: [id])
+  ingredientes ProductoIngrediente[]
+  itemsVenta   ItemVenta[]
+
+  @@map("productos")
+}
+
+model ProductoIngrediente {
+  productoId      String  @map("producto_id")
+  ingredienteId   String  @map("ingrediente_id")
+  cantidad        Int     @default(1)
+  esExtraOpcional Boolean @default(false) @map("es_extra_opcional")
+  precioIncluido  Decimal @default(0) @map("precio_incluido")
+
+  producto    Producto    @relation(fields: [productoId], references: [id])
+  ingrediente Ingrediente @relation(fields: [ingredienteId], references: [id])
+
+  @@id([productoId, ingredienteId])
+  @@map("producto_ingrediente")
+}
+
+model Venta {
+  id         String      @id @default(uuid())
+  usuarioId  String      @map("usuario_id")
+  cajaId     String?     @map("caja_id")
+  totalBase  Decimal     @map("total_base")
+  impuesto   Decimal
+  totalFinal Decimal     @map("total_final")
+  metodoPago MetodoPago  @default(efectivo) @map("metodo_pago")
+  estado     EstadoVenta @default(pendiente)
+  createdAt  DateTime    @default(now()) @map("creado_en")
+  updatedAt  DateTime    @updatedAt @map("actualizado_en")
+
+  usuario Usuario     @relation(fields: [usuarioId], references: [id])
+  caja    Caja?       @relation(fields: [cajaId], references: [id])
+  items   ItemVenta[]
+
+  @@map("ventas")
+}
+
+model ItemVenta {
+  id                      String   @id @default(uuid())
+  ventaId                 String   @map("venta_id")
+  productoId              String   @map("producto_id")
+  cantidad                Int      @default(1)
+  precioBase              Decimal  @map("precio_base")
+  ingredientesModificados Json?    @map("ingredientes_modificados")
+  extrasSeleccionados     Json     @default("[]") @map("extras_seleccionados")
+  totalItem               Decimal  @map("total_item")
+  createdAt               DateTime @default(now()) @map("creado_en")
+
+  venta    Venta    @relation(fields: [ventaId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@map("items_venta")
+}
