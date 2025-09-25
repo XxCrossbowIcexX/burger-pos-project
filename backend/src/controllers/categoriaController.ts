@@ -52,12 +52,7 @@ export const getCategories = catchAsync(async (req: Request, res: Response) => {
 
 export const getCategoriesSimple = catchAsync(
   async (req: Request, res: Response) => {
-    const { activo = true } = req.query;
-
     const categories = await prisma.categoria.findMany({
-      where: {
-        ...(activo !== undefined && { activo: activo === "true" }),
-      },
       select: {
         id: true,
         nombre: true,
@@ -65,7 +60,6 @@ export const getCategoriesSimple = catchAsync(
         permiteIngredientes: true,
         permiteModificar: true,
       },
-      orderBy: { nombre: "asc" },
     });
 
     res.json({

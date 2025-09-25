@@ -5,58 +5,34 @@ import { catchAsync, CustomError } from "../middlewares/errorHandler";
 
 export const getIngredients = catchAsync(
   async (req: Request, res: Response) => {
-    const {
-      page = 1,
-      limit = 50,
-      activo = true,
-      tipo,
-      puedeSerExtra,
-    } = req.query;
-
-    const skip = (Number(page) - 1) * Number(limit);
-    const take = Number(limit);
-
-    // Import or define your enum for TipoIngrediente at the top if not already imported
-    // import { TipoIngrediente } from '@prisma/client';
-
-    const where = {
-      ...(activo !== undefined && { activo: activo === "true" }),
-      ...(tipo && { tipo: tipo as any }), // Cast to enum type if needed, or use TipoIngrediente[tipo as keyof typeof TipoIngrediente]
-      ...(puedeSerExtra !== undefined && {
-        puedeSerExtra: puedeSerExtra === "true",
-      }),
-    };
-
-    const [ingredientes, total] = await Promise.all([
-      prisma.ingrediente.findMany({
-        where,
-        orderBy: [{ tipo: "asc" }, { nombre: "asc" }],
-        skip,
-        take,
-      }),
-      prisma.ingrediente.count({ where }),
-    ]);
+    const ingredientes = await prisma.ingrediente.findMany({
+      where: {
+        puedeSerExtra: true,
+      },
+      select: {
+        id: true,
+        nombre: true,
+        tipo: true,
+        estaqueable: true,
+        precioExtra: true,
+      },
+      orderBy: {
+        nombre: "asc",
+      },
+    });
 
     res.json({
       success: true,
+      count: ingredientes.length,
       data: ingredientes,
-      pagination: {
-        current: Number(page),
-        pages: Math.ceil(total / take),
-        count: ingredientes.length,
-        total,
-      },
     });
   }
 );
 
 export const getExtras = catchAsync(async (req: Request, res: Response) => {
-  const { activo = true } = req.query;
-
   const ingredientes = await prisma.ingrediente.findMany({
     where: {
       puedeSerExtra: true,
-      ...(activo !== undefined && { activo: activo === "true" }),
     },
     select: {
       id: true,

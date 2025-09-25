@@ -4,54 +4,24 @@ import prisma from "../config/database";
 import { catchAsync, CustomError } from "../middlewares/errorHandler";
 
 export const getProducts = catchAsync(async (req: Request, res: Response) => {
-  const { page = 1, limit = 50, activo = true, categoriaId } = req.query;
-
-  const skip = (Number(page) - 1) * Number(limit);
-  const take = Number(limit);
-
-  const where = {
-    ...(activo !== undefined && { activo: activo === "true" }),
-    ...(categoriaId && { categoriaId: String(categoriaId) }),
-  };
-
-  const [productos, total] = await Promise.all([
-    prisma.producto.findMany({
-      where,
-      include: {
-        categoria: {
-          select: { id: true, nombre: true, icono: true },
-        },
-        ingredientes: {
-          include: {
-            ingrediente: {
-              select: {
-                id: true,
-                nombre: true,
-                tipo: true,
-                puedeSerExtra: true,
-                precioExtra: true,
-                estaqueable: true,
-              },
-            },
-          },
+  const productos = await prisma.producto.findMany({
+    include: {
+      categoria: true,
+      ingredientes: {
+        include: {
+          ingrediente: true,
         },
       },
-      orderBy: { nombre: "asc" },
-      skip,
-      take,
-    }),
-    prisma.producto.count({ where }),
-  ]);
+    },
+    orderBy: {
+      nombre: "asc",
+    },
+  });
 
   res.json({
     success: true,
+    count: productos.length,
     data: productos,
-    pagination: {
-      current: Number(page),
-      pages: Math.ceil(total / take),
-      count: productos.length,
-      total,
-    },
   });
 });
 
@@ -85,7 +55,6 @@ export const getProductById = catchAsync(
 export const getProductsByCategory = catchAsync(
   async (req: Request, res: Response) => {
     const { categoriaId } = req.params;
-    const { activo = true } = req.query;
 
     // Verificar que la categoría existe
     const categoria = await prisma.categoria.findUnique({
@@ -99,7 +68,6 @@ export const getProductsByCategory = catchAsync(
     const productos = await prisma.producto.findMany({
       where: {
         categoriaId,
-        ...(activo !== undefined && { activo: activo === "true" }),
       },
       include: {
         categoria: {

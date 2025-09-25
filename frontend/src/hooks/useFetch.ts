@@ -22,12 +22,13 @@ export const useFetch = <T>(url: string): Params<T> => {
 
   useEffect(() => {
     const controller = new AbortController();
-
     setLoading(true);
 
-    const fecthData = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(url, controller);
+        const response = await fetch(url, {
+          signal: controller.signal,
+        });
 
         if (!response.ok) {
           throw new Error("Error en la petición");
@@ -37,13 +38,16 @@ export const useFetch = <T>(url: string): Params<T> => {
         setData(jsonData);
         setError(null);
       } catch (err) {
-        setError(err as Error);
+        // Ignorar errores de abort
+        if (err instanceof Error && err.name !== "AbortError") {
+          setError(err as Error);
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fecthData();
+    fetchData();
 
     return () => {
       controller.abort();
