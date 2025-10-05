@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import type { CategoriaSeleccionada } from "../App";
 import { useFetch, type ApiResponse } from "../hooks";
+import { useAuth } from "../context/AuthContext";
+import { CajaQuickAccess } from "./CajaQuickAccess";
 
 type SideBarProps = {
   categoriaSeleccionada: CategoriaSeleccionada;
@@ -13,7 +15,7 @@ type Category = {
   icono: string;
 };
 
-const url = "http://localhost:3000/api/categorias";
+const url = "http://localhost:3000/api/categorias?activo=true";
 
 export const SideBar = ({
   categoriaSeleccionada,
@@ -21,8 +23,9 @@ export const SideBar = ({
 }: SideBarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const sideBarRef = useRef<HTMLDivElement>(null);
-
-  const { data, loading, error } = useFetch<ApiResponse<Category[]>>(url);
+  const { logout } = useAuth();
+  const { data, loading, error, refetch } =
+    useFetch<ApiResponse<Category[]>>(url);
 
   // selecciona la primer categoria si no hay una seleccionada
   useEffect(() => {
@@ -47,10 +50,21 @@ export const SideBar = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isExpanded]);
 
+  // Escuchar evento personalizado para actualizar categorías
+  useEffect(() => {
+    const handleCategoriesUpdate = () => {
+      refetch();
+    };
+
+    window.addEventListener("categoriesUpdated", handleCategoriesUpdate);
+    return () =>
+      window.removeEventListener("categoriesUpdated", handleCategoriesUpdate);
+  }, [refetch]);
+
   return (
     <aside
       ref={sideBarRef}
-      className={`bg-[var(--color_oscuro)] text-[var(--color_claro)] transition-all duration-300
+      className={`bg-[var(--color_oscuro)] text-[var(--color_claro)] transition-all duration-300 flex flex-col
         ${isExpanded ? "w-60" : "w-16"} lg:w-60`}
     >
       <div className="border-b flex items-center h-[52px]">
@@ -110,7 +124,7 @@ export const SideBar = ({
                   setIsExpanded(false);
                 }}
               >
-                <i className={`fa-solid ${categoria.icono}`}></i>
+                <i className={`${categoria.icono}`}></i>
                 <p
                   className={`m-0 ${isExpanded ? "block" : "hidden"} lg:block`}
                 >
@@ -120,6 +134,23 @@ export const SideBar = ({
             </li>
           ))}
       </ul>
+
+      {/* Acceso rápido a caja */}
+      <div className={`px-2 ${isExpanded ? "block" : "hidden"} lg:block`}>
+        <CajaQuickAccess />
+      </div>
+
+      <div className="mt-auto">
+        <button
+          onClick={logout}
+          className="w-full h-[50px] bg-gradient-to-r from-[var(--color_principal)] to-[var(--color_principal_hover)] text-white font-bold py-3 px-6 hover:bg-[var(--color_principal_hover)] hover:cursor-pointer"
+        >
+          <div className="flex justify-center items-center hover:scale-105">
+            <i className="fa-solid fa-right-from-bracket mr-2"></i>
+            Cerrar Sesión
+          </div>
+        </button>
+      </div>
     </aside>
   );
 };
