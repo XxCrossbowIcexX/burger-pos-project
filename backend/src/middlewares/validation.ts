@@ -21,7 +21,7 @@ export const validate = (schema: AnyZodObject) => {
         return next(
           new CustomError(
             `Errores de validación: ${errorMessages
-              .map((e) => e.message)
+              .map((e) => `${e.field}: ${e.message}`)
               .join(", ")}`,
             400
           )

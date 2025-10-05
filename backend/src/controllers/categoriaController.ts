@@ -14,9 +14,11 @@ export const getCategories = catchAsync(async (req: Request, res: Response) => {
   const skip = (Number(page) - 1) * Number(limit);
   const take = Number(limit);
 
-  const where = {
-    ...(activo !== undefined && { activo: activo === "true" }),
-  };
+  // Si activo es "all", no filtrar por estado activo
+  const where: any = {};
+  if (activo !== "all") {
+    where.activo = activo === "false" ? false : true;
+  }
 
   const includeOptions =
     includeProductCount === "true"
@@ -52,7 +54,23 @@ export const getCategories = catchAsync(async (req: Request, res: Response) => {
 
 export const getCategoriesSimple = catchAsync(
   async (req: Request, res: Response) => {
+    const {
+      page = 1,
+      limit = 50,
+      activo = true,
+      includeProductCount = false,
+    } = req.query;
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+
+    // Si activo es "all", no filtrar por estado activo
+    const where: any = {};
+    if (activo !== "all") {
+      where.activo = activo === "false" ? false : true;
+    }
     const categories = await prisma.categoria.findMany({
+      where,
       select: {
         id: true,
         nombre: true,
@@ -120,6 +138,17 @@ export const createCategory = catchAsync(
       permiteModificar = true,
       icono,
     } = req.body;
+
+    // Verificar si ya existe una categoría con el mismo nombre
+    const existingCategory = await prisma.categoria.findFirst({
+      where: {
+        nombre: nombre,
+      },
+    });
+
+    if (existingCategory) {
+      throw new CustomError("Ya existe una categoría con ese nombre", 409);
+    }
 
     const categoria = await prisma.categoria.create({
       data: {

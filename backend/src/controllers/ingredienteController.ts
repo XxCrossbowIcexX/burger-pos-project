@@ -5,16 +5,26 @@ import { catchAsync, CustomError } from "../middlewares/errorHandler";
 
 export const getIngredients = catchAsync(
   async (req: Request, res: Response) => {
+    const { forExtras, activo } = req.query;
+
+    const where: any = forExtras === 'true' ? { puedeSerExtra: true } : {};
+
+    // Si activo es "all", no filtrar por estado activo
+    if (activo !== "all" && activo !== undefined) {
+      where.activo = activo === "false" ? false : true;
+    }
+
     const ingredientes = await prisma.ingrediente.findMany({
-      where: {
-        puedeSerExtra: true,
-      },
+      where,
       select: {
         id: true,
         nombre: true,
         tipo: true,
         estaqueable: true,
+        puedeSerExtra: true,
         precioExtra: true,
+        descripcion: true,
+        activo: true,
       },
       orderBy: {
         nombre: "asc",
@@ -107,6 +117,17 @@ export const createIngredient = catchAsync(
       precioExtra = 0,
       descripcion,
     } = req.body;
+
+    // Verificar si ya existe un ingrediente con el mismo nombre
+    const existingIngredient = await prisma.ingrediente.findFirst({
+      where: {
+        nombre: nombre
+      }
+    });
+
+    if (existingIngredient) {
+      throw new CustomError("Ya existe un ingrediente con ese nombre", 409);
+    }
 
     const ingrediente = await prisma.ingrediente.create({
       data: {

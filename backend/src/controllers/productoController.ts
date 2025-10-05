@@ -4,7 +4,16 @@ import prisma from "../config/database";
 import { catchAsync, CustomError } from "../middlewares/errorHandler";
 
 export const getProducts = catchAsync(async (req: Request, res: Response) => {
+  const { activo } = req.query;
+
+  const where: any = {};
+  // Si activo es "all", no filtrar por estado activo
+  if (activo !== "all" && activo !== undefined) {
+    where.activo = activo === "false" ? false : true;
+  }
+
   const productos = await prisma.producto.findMany({
+    where,
     include: {
       categoria: true,
       ingredientes: {
@@ -68,6 +77,7 @@ export const getProductsByCategory = catchAsync(
     const productos = await prisma.producto.findMany({
       where: {
         categoriaId,
+        activo: true,
       },
       include: {
         categoria: {
@@ -122,6 +132,17 @@ export const createProduct = catchAsync(async (req: Request, res: Response) => {
 
   if (!categoria) {
     throw new CustomError("Categoría no encontrada", 404);
+  }
+
+  // Verificar si ya existe un producto con el mismo nombre
+  const existingProduct = await prisma.producto.findFirst({
+    where: {
+      nombre: nombre,
+    },
+  });
+
+  if (existingProduct) {
+    throw new CustomError("Ya existe un producto con ese nombre", 409);
   }
 
   // Crear producto con transacción

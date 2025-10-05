@@ -1,6 +1,7 @@
 // src/middlewares/errorHandler.ts
 import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
+import { logger } from "../utils/logger";
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -34,14 +35,12 @@ export const errorHandler = (
   error.message = err.message;
 
   // Log del error
-  console.error("💥 ERROR:", {
-    message: err.message,
-    stack: err.stack,
+  logger.error({
+    err,
     url: req.url,
     method: req.method,
     ip: req.ip,
-    timestamp: new Date().toISOString(),
-  });
+  }, "💥 Error en la aplicación");
 
   // Errores de Prisma
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
