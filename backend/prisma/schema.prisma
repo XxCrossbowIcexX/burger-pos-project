@@ -12,6 +12,7 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum RolUsuario {
+  sistema
   administrador
   mostrador
   cocina
@@ -43,6 +44,17 @@ enum MetodoPago {
   transferencia
 }
 
+enum TipoEntrega {
+  local
+  paraLlevar
+  domicilio
+}
+
+enum TipoMovimiento {
+  ingreso
+  retiro
+}
+
 // ─────────────────────────────────────────────
 // Modelos
 // ─────────────────────────────────────────────
@@ -70,14 +82,17 @@ model Caja {
   ventasEfectivo      Decimal    @default(0) @map("ventas_efectivo")
   ventasTransferencia Decimal    @default(0) @map("ventas_transferencia")
   totalVentas         Decimal    @default(0) @map("total_ventas")
+  ingresosExtra       Decimal    @default(0) @map("ingresos_extra")
+  retirosEfectivo     Decimal    @default(0) @map("retiros_efectivo")
   diferencia          Decimal?
   estado              EstadoCaja @default(abierta)
   fechaApertura       DateTime   @default(now()) @map("fecha_apertura")
   fechaCierre         DateTime?  @map("fecha_cierre")
   activo              Boolean    @default(true)
 
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
-  ventas  Venta[]
+  usuario     Usuario           @relation(fields: [usuarioId], references: [id])
+  ventas      Venta[]
+  movimientos MovimientoCaja[]
 
   @@map("cajas")
 }
@@ -149,16 +164,17 @@ model ProductoIngrediente {
 }
 
 model Venta {
-  id         String      @id @default(uuid())
-  usuarioId  String      @map("usuario_id")
-  cajaId     String?     @map("caja_id")
-  totalBase  Decimal     @map("total_base")
-  impuesto   Decimal
-  totalFinal Decimal     @map("total_final")
-  metodoPago MetodoPago  @default(efectivo) @map("metodo_pago")
-  estado     EstadoVenta @default(pendiente)
-  createdAt  DateTime    @default(now()) @map("creado_en")
-  updatedAt  DateTime    @updatedAt @map("actualizado_en")
+  id           String      @id @default(uuid())
+  usuarioId    String      @map("usuario_id")
+  cajaId       String?     @map("caja_id")
+  totalBase    Decimal     @map("total_base")
+  impuesto     Decimal
+  totalFinal   Decimal     @map("total_final")
+  metodoPago   MetodoPago  @default(efectivo) @map("metodo_pago")
+  tipoEntrega  TipoEntrega @default(local) @map("tipo_entrega")
+  estado       EstadoVenta @default(pendiente)
+  createdAt    DateTime    @default(now()) @map("creado_en")
+  updatedAt    DateTime    @updatedAt @map("actualizado_en")
 
   usuario Usuario     @relation(fields: [usuarioId], references: [id])
   caja    Caja?       @relation(fields: [cajaId], references: [id])
@@ -182,4 +198,30 @@ model ItemVenta {
   producto Producto @relation(fields: [productoId], references: [id])
 
   @@map("items_venta")
+}
+
+model Configuracion {
+  id          String   @id @default(uuid())
+  clave       String   @unique
+  valor       String
+  tipo        String   @default("string") // string, number, boolean, json
+  descripcion String?
+  categoria   String   @default("general") // general, impuestos, sistema, etc.
+  createdAt   DateTime @default(now()) @map("creado_en")
+  updatedAt   DateTime @updatedAt @map("actualizado_en")
+
+  @@map("configuraciones")
+}
+
+model MovimientoCaja {
+  id        String         @id @default(uuid())
+  cajaId    String         @map("caja_id")
+  tipo      TipoMovimiento
+  monto     Decimal
+  concepto  String
+  createdAt DateTime       @default(now()) @map("creado_en")
+
+  caja Caja @relation(fields: [cajaId], references: [id])
+
+  @@map("movimientos_caja")
 }
