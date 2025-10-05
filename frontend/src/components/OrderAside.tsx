@@ -3,6 +3,7 @@ import { CartItem as CartItemComponent } from "./CartItem";
 import { AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { ModifyProductModal } from "./ModifyProductModal";
+import { PaymentModal } from "./PaymentModal";
 import { useFetch, type ApiResponse } from "../hooks";
 
 export type Extra = {
@@ -40,8 +41,43 @@ export const OrderAside = ({
 }: OrderAsideProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [itemEdit, setItemEdit] = useState<CartItem | null>(null);
+  const [ivaPorcentaje, setIvaPorcentaje] = useState(22);
   const { data: extrasDisponibles } = useFetch<ApiResponse<Extra[]>>(urlExtra);
+
+  // Cargar el IVA desde la configuración
+  useEffect(() => {
+    const fetchIva = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:3000/api/configuraciones/iva_porcentaje"
+        );
+        const data = await response.json();
+        if (data.success) {
+          setIvaPorcentaje(parseFloat(data.data.valor));
+        }
+      } catch (error) {
+        console.error("Error al cargar IVA:", error);
+      }
+    };
+
+    fetchIva();
+
+    // Escuchar cambios en la configuración
+    const handleConfigUpdate = () => {
+      fetchIva();
+    };
+
+    window.addEventListener("configuracion-updated", handleConfigUpdate);
+    return () => {
+      window.removeEventListener("configuracion-updated", handleConfigUpdate);
+    };
+  }, []);
+
+  const subtotal = carrito.reduce((acc, item) => acc + calcularTotal(item), 0);
+  const impuesto = subtotal * (ivaPorcentaje / 100);
+  const total = subtotal + impuesto;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -118,12 +154,11 @@ export const OrderAside = ({
           </span>
         </div>
         <div className="flex justify-between">
-          <p className="text-[var(--color_borde)]">Impuesto (22%):</p>
+          <p className="text-[var(--color_borde)]">
+            Impuesto ({ivaPorcentaje}%):
+          </p>
           <span className="text-[var(--color_oscuro)]">
-            $
-            {carrito
-              .reduce((acc, item) => acc + calcularTotal(item) * 0.22, 0)
-              .toFixed(2)}
+            ${impuesto.toFixed(2)}
           </span>
         </div>
       </div>
@@ -132,19 +167,20 @@ export const OrderAside = ({
         <div className="flex justify-between text-[var(--color_oscuro)] text-xl font-bold">
           <p>Total:</p>
           <span className="text-[var(--color_principal)]">
-            $
-            {carrito
-              .reduce((acc, item) => acc + calcularTotal(item) * 1.22, 0)
-              .toFixed(2)}
+            ${total.toFixed(2)}
           </span>
         </div>
       </div>
 
-      <button className="mt-4 w-full bg-[var(--color_secundario)] text-[var(--color_oscuro)] text-lg font-bold px-4 py-2 rounded hover:cursor-pointer hover:bg-[var(--color_secundario_hover)] transition">
+      <button
+        onClick={() => setPaymentModalOpen(true)}
+        disabled={carrito.length === 0}
+        className="mt-4 w-full bg-[var(--color_secundario)] text-[var(--color_oscuro)] text-lg font-bold px-4 py-2 rounded hover:cursor-pointer hover:bg-[var(--color_secundario_hover)] transition disabled:opacity-50 disabled:cursor-not-allowed"
+      >
         <i className="fa-solid fa-credit-card"></i> Finalizar Orden
       </button>
 
-      {/* Modal */}
+      {/* Modal de modificación */}
       <ModifyProductModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -157,6 +193,22 @@ export const OrderAside = ({
         onConfirm={(updated) => {
           onUpdateItem(updated);
           setModalOpen(false);
+        }}
+      />
+
+      {/* Modal de pago */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        carrito={carrito}
+        total={total}
+        subtotal={subtotal}
+        iva={ivaPorcentaje}
+        impuesto={impuesto}
+        onSuccess={(ventaData, ticket) => {
+          console.log("Venta creada:", ventaData);
+          console.log("Ticket:", ticket);
+          onClear(); // Limpiar carrito después de venta exitosa
         }}
       />
     </aside>

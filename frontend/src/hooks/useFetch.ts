@@ -6,19 +6,24 @@ export type ApiResponse<T> = {
   data: T;
 };
 
-type Data<T> = T | null;
 type ErrorType = Error | null;
 
 interface Params<T> {
-  data: Data<T>;
+  data: T | null;
   loading: boolean;
   error: Error | null;
+  refetch: () => void;
 }
 
 export const useFetch = <T>(url: string): Params<T> => {
-  const [data, setData] = useState<Data<T>>(null);
+  const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<ErrorType>(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+
+  const refetch = () => {
+    setRefetchTrigger((prev) => prev + 1);
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -26,7 +31,10 @@ export const useFetch = <T>(url: string): Params<T> => {
 
     const fetchData = async () => {
       try {
-        const response = await fetch(url, {
+        const fullUrl = url.startsWith("http")
+          ? url
+          : `http://localhost:3000${url}`;
+        const response = await fetch(fullUrl, {
           signal: controller.signal,
         });
 
@@ -52,7 +60,7 @@ export const useFetch = <T>(url: string): Params<T> => {
     return () => {
       controller.abort();
     };
-  }, [url]);
+  }, [url, refetchTrigger]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch };
 };

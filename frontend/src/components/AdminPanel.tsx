@@ -6,6 +6,8 @@ import CategoriesPage from "../pages/admin/CategoriesPage";
 import ProductsPage from "../pages/admin/ProductsPages";
 import { AdminSidebar } from "./AdminSideBar";
 import IngredientsPage from "../pages/admin/IngredientsPage";
+import CajaPage from "../pages/admin/CajaPage";
+import GeneralSettingsPage from "../pages/admin/GeneralSettingsPage";
 
 interface AdminPanelProps {
   onClose?: () => void;
@@ -22,8 +24,12 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
     switch (activePath) {
       case "dashboard":
         return <DashboardPage />;
+      case "general":
+        return <GeneralSettingsPage />;
       case "users":
         return <UsersPage />;
+      case "caja":
+        return <CajaPage />;
       case "ingredients":
         return <IngredientsPage />;
       case "categories":
