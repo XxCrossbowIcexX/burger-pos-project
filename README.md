@@ -29,6 +29,6 @@ npm install
 - [x] Catálogo de productos con categorías
 - [x] Carrito de compras con extras/exclusiones
 - [ ] Panel de administración
-- [ ] CRUD de productos, categorías, usuarios
-- [ ] Sistema de caja
+- [x] CRUD de productos, categorías, usuarios, ingredientes, caja
+- [x] Sistema de caja
 - [ ] Historial de ventas
