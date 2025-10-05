@@ -7,16 +7,22 @@ import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 
+// Importar logger
+import { logger } from "./utils/logger";
+
 // Importar middlewares personalizados
 import { errorHandler } from "./middlewares/errorHandler";
+import { initConfiguraciones } from "./controllers/configuracionController";
 
 // Importar rutas
 import productoRoutes from "./routes/productoRoutes";
 import categoriaRoutes from "./routes/categoriaRoutes";
 import ingredienteRoutes from "./routes/ingredienteRoutes";
-// import usuarioRoutes from "./routes/usuarioRoutes";  // Para después
-// import ventaRoutes from "./routes/ventaRoutes";      // Para después
-// import cajaRoutes from "./routes/cajaRoutes";        // Para después
+import usuarioRoutes from "./routes/usuarioRoutes";
+import cajaRoutes from "./routes/cajaRoutes";
+import ventaRoutes from "./routes/ventaRoutes";
+import configuracionRoutes from "./routes/configuracionRoutes";
+import movimientoRoutes from "./routes/movimientoRoutes";
 
 dotenv.config();
 
@@ -124,6 +130,11 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/productos", productoRoutes);
 app.use("/api/categorias", categoriaRoutes);
 app.use("/api/ingredientes", ingredienteRoutes);
+app.use("/api/usuarios", usuarioRoutes);
+app.use("/api/cajas", cajaRoutes);
+app.use("/api/ventas", ventaRoutes);
+app.use("/api/configuraciones", configuracionRoutes);
+app.use("/api/movimientos", movimientoRoutes);
 
 // ========================================
 // MANEJO DE ERRORES
@@ -148,26 +159,29 @@ app.use(errorHandler);
 // INICIO DEL SERVIDOR
 // ========================================
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📚 Documentación: http://localhost:${PORT}`);
-  console.log(`💚 Health check: http://localhost:${PORT}/health`);
-  console.log(`🌍 Entorno: ${NODE_ENV}`);
+const server = app.listen(PORT, async () => {
+  logger.info(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  logger.info(`📚 Documentación: http://localhost:${PORT}`);
+  logger.info(`💚 Health check: http://localhost:${PORT}/health`);
+  logger.info(`🌍 Entorno: ${NODE_ENV}`);
+
+  // Inicializar configuraciones por defecto
+  await initConfiguraciones();
 });
 
 // Manejo graceful de cierre del servidor
 process.on("SIGTERM", () => {
-  console.log("👋 SIGTERM recibido, cerrando servidor gracefully...");
+  logger.info("👋 SIGTERM recibido, cerrando servidor gracefully...");
   server.close(() => {
-    console.log("✅ Servidor cerrado exitosamente");
+    logger.info("✅ Servidor cerrado exitosamente");
     process.exit(0);
   });
 });
 
 process.on("SIGINT", () => {
-  console.log("👋 SIGINT recibido, cerrando servidor gracefully...");
+  logger.info("👋 SIGINT recibido, cerrando servidor gracefully...");
   server.close(() => {
-    console.log("✅ Servidor cerrado exitosamente");
+    logger.info("✅ Servidor cerrado exitosamente");
     process.exit(0);
   });
 });
